@@ -1,33 +1,33 @@
+dispLevels = 16;
 iterations = 80;
 lambda = 5;
-threshold = 2;
-dispLevels = 16;
+threshold = dispLevels-1; %don't use threshold
 
-% Δημιούργησε τις τιμές των παραλλάξεων
+% Set the disparity values
 d = 0:dispLevels-1;
 
-% Διάβασε τις εικόνες και μετέτρεψέ τες σε εικόνες κλίμακας του γκρι
+% Read the stereo image and convert it to grayscale
 left = rgb2gray(imread('Left.png'));
 right = rgb2gray(imread('Right.png'));
 
-% Εφάρμοσε ένα γκαουσιανό φίλτρο στις εικόνες
+% Apply a Gaussian filter
 left = imgaussfilt(left,0.6,'FilterSize',5);
 right = imgaussfilt(right,0.6,'FilterSize',5);
 
-% Πάρε τις διαστάσεις των εικόνων
+% Get the image size
 [height,width] = size(left);
 
-% Υπολόγισε το data cost
+% Cache data cost
 dataCost = zeros(height,width,dispLevels);
 for i = 1:dispLevels
 	right_d = [zeros(height,d(i)),right(:,1:end-d(i))];
 	dataCost(:,:,i) = abs(double(left)-double(right_d));
 end
 
-% Υπολόγισε το smoothness cost
+% Cache smoothness cost
 smoothnessCost = lambda*min(abs(d-d'),threshold);
 
-% Αρχικοποίησε τα μηνύματα στην τιμή μηδέν
+% Initialize messages
 msgUp = zeros(height,width,dispLevels);
 msgDown = zeros(height,width,dispLevels);
 msgRight = zeros(height,width,dispLevels);
@@ -35,36 +35,36 @@ msgLeft = zeros(height,width,dispLevels);
 
 figure
 
-% Ξεκίνα τις επαναλήψεις
+% Start iterations
 for i = 1:iterations
-	% Βοηθητικοί πίνακες για τον υπολογισμό των μηνυμάτων
+	% Auxiliary tables that help us create the messages
 	U = dataCost + msgDown + msgRight + msgLeft;
 	D = dataCost + msgUp + msgRight + msgLeft;
 	R = dataCost + msgUp + msgDown + msgLeft;
 	L = dataCost + msgUp + msgDown + msgRight;
 	
-	% Για κάθε pixel της εικόνας
+	% For each pixel
 	for y = 2:height-1
 		for x = 2:width-1
-			% Στείλε μήνυμα πάνω
+			% Send message up
 			msg = reshape(U(y,x,:),[dispLevels,1]);
 			msg = min(msg+smoothnessCost);
 			msg = msg-min(msg);
 			msgDown(y-1,x,:) = msg;
 			
-			% Στείλε μήνυμα κάτω
+			% Send message down
 			msg = reshape(D(y,x,:),[dispLevels,1]);
 			msg = min(msg+smoothnessCost);
 			msg = msg-min(msg);
 			msgUp(y+1,x,:) = msg;
 			
-			% Στείλε μήνυμα δεξιά
+			% Send message right
 			msg = reshape(R(y,x,:),[dispLevels,1]);
 			msg = min(msg+smoothnessCost);
 			msg = msg-min(msg);
 			msgLeft(y,x+1,:) = msg;
 			
-			% Στείλε μήνυμα αριστερά
+			% Send message left
 			msg = reshape(L(y,x,:),[dispLevels,1]);
 			msg = min(msg+smoothnessCost);
 			msg = msg-min(msg);
@@ -72,23 +72,23 @@ for i = 1:iterations
 		end
 	end
 	
-	% Υπολόγισε το κόστος κάθε παράλλαξης (πεποίθηση)
+	% Compute belief
 	belief = dataCost + msgUp + msgDown + msgRight + msgLeft;
 	
-	% Δημιούργησε τον χάρτη παραλλάξεων
+	% Update disparity map
 	[Y,I] = min(belief,[],3);
 	dispMap = d(I);
 	
-	% Μετέτρεψε τον χάρτη παραλλάξεων σε εικόνα
+	% Update disparity image
 	scaleFactor = 256/dispLevels;
 	dispImage = uint8(dispMap*scaleFactor);
 	
-	% Εμφάνισε τον χάρτη παραλλάξεων
+	% Show disparity image
 	imshow(dispImage)
 	
-	% Εμφάνισε τον αριθμό της τρέχουσας επανάληψης
+	% Show current iteration
 	fprintf('iteration %d/%d\n',i,iterations)
 end
 
-% Αποθήκευσε τον τελικό χάρτη παραλλάξεων σε αρχείο
+% Save disparity image
 imwrite(dispImage,'Disparity.png')
