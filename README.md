@@ -1,5 +1,5 @@
-# Loopy Belief Propagation for Stereo Matching
-A Matlab implementation of Loopy Belief Propagation for stereo matching. It uses matrix operations to make the code faster.
+# Belief Propagation for Stereo Matching (Min-Sum)
+A Matlab implementation of Loopy Belief Propagation for stereo matching. It uses the "Min-Sum" variation of the algorithm and the "Synchronous" message update schedule.
 
 ## Input Image
 The Tsukuba stereo image that used as input.
